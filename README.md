@@ -8,7 +8,7 @@ A simple progressive web app that reads text files or pasted text aloud, like a 
 - Upload `.txt`, `.md`, or `.html` files.
 - Save progress between sessions.
 - Installable as a PWA; works offline after first load.
-- Additional AI voice options can be added by editing `ai-voices.json`. Playback uses a placeholder API endpoint; replace it with your TTS service.
+- Additional AI voice options can be added by editing `ai-voices.json`. Built-in support uses [OpenAI's text-to-speech](https://api.openai.com/) (`gpt-4o-mini-tts`). You'll be prompted for an API key the first time you pick an AI voice; the key is stored locally.
 
 ## Running Locally
 ```bash
