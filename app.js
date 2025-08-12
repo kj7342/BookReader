@@ -23,6 +23,7 @@ const saveBtn = $('#saveBtn');
 const installBtn = $('#installBtn');
 
 let voices = [];
+let aiVoices = [];
 let chunks = [];
 let currentIndex = 0;
 let speaking = false;
@@ -67,9 +68,27 @@ function populateVoices() {
   const preferred = voices.find(v => v.lang.startsWith('en')) || voices[0];
   if (preferred) voiceSelect.value = preferred.voiceURI;
 }
+async function fetchAIVoices() {
+  try {
+    const res = await fetch('ai-voices.json');
+    if (!res.ok) throw new Error(res.statusText);
+    aiVoices = await res.json();
+    for (const v of aiVoices) {
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = `AI: ${v.name} ${v.lang ? '('+v.lang+')' : ''}`.trim();
+      opt.dataset.lang = v.lang || '';
+      opt.dataset.provider = 'ai';
+      voiceSelect.appendChild(opt);
+    }
+  } catch (e) {
+    log('AI voice fetch error', e);
+  }
+}
 populateVoices();
+fetchAIVoices();
 if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-  speechSynthesis.onvoiceschanged = populateVoices;
+  speechSynthesis.onvoiceschanged = () => { populateVoices(); fetchAIVoices(); };
 }
 
 // State restore
@@ -167,6 +186,42 @@ function updateProgress() {
   progressLabel.textContent = pct + '%';
 }
 
+async function speakWithAIVoice(text, voiceId) {
+  try {
+    const res = await fetch('https://api.example.com/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voice: voiceId })
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    pendingUtterance = audio;
+    audio.onended = () => {
+      pendingUtterance = null;
+      if (!speaking) return;
+      currentIndex++;
+      updateProgress();
+      if (currentIndex < chunks.length) {
+        queueNext();
+      } else {
+        speaking = false;
+        updateProgress();
+      }
+    };
+    audio.onerror = (e) => {
+      log('ai audio error', e);
+      pendingUtterance = null;
+      speaking = false;
+    };
+    await audio.play();
+  } catch (e) {
+    log('AI TTS error', e);
+    speaking = false;
+  }
+}
+
 // Control handlers
 playBtn.addEventListener('click', () => {
   if (!textInput.value.trim()) return;
@@ -180,14 +235,20 @@ playBtn.addEventListener('click', () => {
 });
 
 pauseBtn.addEventListener('click', () => {
-  if (speechSynthesis.speaking && !speechSynthesis.paused) {
+  if (pendingUtterance instanceof HTMLAudioElement) {
+    pendingUtterance.pause();
+    speaking = false;
+  } else if (speechSynthesis.speaking && !speechSynthesis.paused) {
     speechSynthesis.pause();
     speaking = false;
   }
 });
 
 resumeBtn.addEventListener('click', () => {
-  if (speechSynthesis.paused) {
+  if (pendingUtterance instanceof HTMLAudioElement) {
+    pendingUtterance.play();
+    speaking = true;
+  } else if (speechSynthesis.paused) {
     speechSynthesis.resume();
     speaking = true;
   } else if (!speechSynthesis.speaking) {
@@ -197,7 +258,12 @@ resumeBtn.addEventListener('click', () => {
 });
 
 stopBtn.addEventListener('click', () => {
-  speechSynthesis.cancel();
+  if (pendingUtterance instanceof HTMLAudioElement) {
+    pendingUtterance.pause();
+    pendingUtterance.currentTime = 0;
+  } else {
+    speechSynthesis.cancel();
+  }
   speaking = false;
   pendingUtterance = null;
 });
@@ -239,8 +305,13 @@ function queueNext(unlock=false) {
     // iOS sometimes needs a fresh utterance to unlock audio. We just proceed normally.
   }
   const text = chunks[currentIndex] ?? '';
-  pendingUtterance = makeUtterance(text);
-  speechSynthesis.speak(pendingUtterance);
+  const selected = voiceSelect.options[voiceSelect.selectedIndex];
+  if (selected?.dataset.provider === 'ai') {
+    speakWithAIVoice(text, selected.value);
+  } else {
+    pendingUtterance = makeUtterance(text);
+    speechSynthesis.speak(pendingUtterance);
+  }
   updateProgress();
 }
 
