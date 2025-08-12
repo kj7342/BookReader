@@ -3,11 +3,12 @@
 A simple progressive web app that reads text files or pasted text aloud, like a lightweight Audible.
 
 ## Features
-- Pick from available voices on your device (Web Speech API).
+- Pick from available voices on your device (Web Speech API) or extra AI voices.
 - Control speed, pitch, and chunk size.
 - Upload `.txt`, `.md`, or `.html` files.
 - Save progress between sessions.
 - Installable as a PWA; works offline after first load.
+- Additional AI voice options can be added by editing `ai-voices.json`. Playback uses a placeholder API endpoint; replace it with your TTS service.
 
 ## Running Locally
 ```bash
