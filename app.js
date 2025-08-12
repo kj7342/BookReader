@@ -19,7 +19,7 @@ const progress = $('#progress');
 const progressLabel = $('#progressLabel');
 const chunkSizeInput = $('#chunkSize');
 const chunkVal = $('#chunkVal');
-const saveBtn = $('#saveBtn');
+const bookmarkBtn = $('#bookmarkBtn');
 const installBtn = $('#installBtn');
 const recordVoiceBtn = $('#recordVoiceBtn');
 const stopRecordBtn = $('#stopRecordBtn');
@@ -333,6 +333,9 @@ pauseBtn.addEventListener('click', () => {
     speechSynthesis.pause();
     speaking = false;
   }
+  saveState();
+  bookmarkBtn.textContent = 'Bookmarked ✔︎';
+  setTimeout(()=> bookmarkBtn.textContent='🔖 Bookmark', 1200);
 });
 
 resumeBtn.addEventListener('click', () => {
@@ -359,10 +362,10 @@ stopBtn.addEventListener('click', () => {
   pendingUtterance = null;
 });
 
-saveBtn.addEventListener('click', () => {
+bookmarkBtn.addEventListener('click', () => {
   saveState();
-  saveBtn.textContent = 'Saved ✔︎';
-  setTimeout(()=> saveBtn.textContent='💾 Save Progress', 1200);
+  bookmarkBtn.textContent = 'Bookmarked ✔︎';
+  setTimeout(()=> bookmarkBtn.textContent='🔖 Bookmark', 1200);
 });
 
 rate.addEventListener('input', () => { rateVal.textContent = rate.value; });
