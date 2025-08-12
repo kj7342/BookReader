@@ -24,6 +24,11 @@
         <select id="voiceSelect" aria-label="Voice selector"></select>
       </div>
       <div class="row">
+        <button id="recordVoiceBtn">🎤 Record My Voice</button>
+        <button id="stopRecordBtn" hidden>⏹️ Stop</button>
+        <button id="trainVoiceBtn" class="ghost" hidden>Train Voice</button>
+      </div>
+      <div class="row">
         <label for="rate">Speed <span id="rateVal">1.0</span>x</label>
         <input id="rate" type="range" min="0.5" max="2" value="1" step="0.05">
       </div>
