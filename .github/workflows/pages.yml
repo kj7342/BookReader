@@ -24,7 +24,7 @@ jobs:
       - name: Prepare site
         run: |
           mkdir -p _site
-          cp -r pwa-audible-like/* _site/
+          cp -r ./* _site/
           # Safety: ensure index exists
           test -f _site/index.html
 
