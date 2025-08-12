@@ -4,6 +4,7 @@ A simple progressive web app that reads text files or pasted text aloud, like a 
 
 ## Features
 - Pick from available voices on your device (Web Speech API) or extra AI voices.
+- Record your own voice and train a custom AI voice.
 - Control speed, pitch, and chunk size.
 - Upload `.txt`, `.md`, or `.html` files.
 - Save progress between sessions.

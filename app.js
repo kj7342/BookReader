@@ -21,6 +21,9 @@ const chunkSizeInput = $('#chunkSize');
 const chunkVal = $('#chunkVal');
 const saveBtn = $('#saveBtn');
 const installBtn = $('#installBtn');
+const recordVoiceBtn = $('#recordVoiceBtn');
+const stopRecordBtn = $('#stopRecordBtn');
+const trainVoiceBtn = $('#trainVoiceBtn');
 
 let voices = [];
 let aiVoices = [];
@@ -29,6 +32,8 @@ let currentIndex = 0;
 let speaking = false;
 let pendingUtterance = null;
 let deferredPrompt = null;
+let mediaRecorder = null;
+let recordedChunks = [];
 
 function log(...args){ console.log('[Listen]', ...args); }
 
@@ -51,6 +56,62 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(err => log('SW error', err));
   });
+}
+
+// Voice recording for custom AI voice
+async function startVoiceRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      if (recordedChunks.length) trainVoiceBtn.hidden = false;
+    };
+    mediaRecorder.start();
+  } catch (e) {
+    log('recording error', e);
+  }
+}
+
+function stopVoiceRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+}
+
+async function trainCustomVoice() {
+  const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+  try {
+    let key = localStorage.getItem('openai_api_key');
+    if (!key) {
+      key = prompt('Enter OpenAI API key');
+      if (!key) throw new Error('Missing OpenAI API key');
+      localStorage.setItem('openai_api_key', key);
+    }
+    const form = new FormData();
+    form.append('sample', blob, 'sample.webm');
+    const res = await fetch('https://api.openai.com/v1/audio/voices', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}` },
+      body: form
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    const { id, name } = data;
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = `AI: ${name || 'My Voice'}`;
+    opt.dataset.provider = 'ai';
+    voiceSelect.appendChild(opt);
+    voiceSelect.value = id;
+    trainVoiceBtn.hidden = true;
+  } catch (e) {
+    log('custom voice error', e);
+  }
 }
 
 // Load voices (some browsers need async event)
@@ -236,6 +297,23 @@ async function speakWithAIVoice(text, voiceId) {
 }
 
 // Control handlers
+recordVoiceBtn?.addEventListener('click', () => {
+  recordVoiceBtn.hidden = true;
+  stopRecordBtn.hidden = false;
+  trainVoiceBtn.hidden = true;
+  startVoiceRecording();
+});
+
+stopRecordBtn?.addEventListener('click', () => {
+  stopRecordBtn.hidden = true;
+  recordVoiceBtn.hidden = false;
+  stopVoiceRecording();
+});
+
+trainVoiceBtn?.addEventListener('click', () => {
+  trainCustomVoice();
+});
+
 playBtn.addEventListener('click', () => {
   if (!textInput.value.trim()) return;
   chunks = chunkText(textInput.value, Number(chunkSizeInput.value));
