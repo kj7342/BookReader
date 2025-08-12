@@ -188,14 +188,27 @@ function updateProgress() {
 
 async function speakWithAIVoice(text, voiceId) {
   try {
-    const res = await fetch('https://api.example.com/tts', {
+    let key = localStorage.getItem('openai_api_key');
+    if (!key) {
+      key = prompt('Enter OpenAI API key');
+      if (!key) throw new Error('Missing OpenAI API key');
+      localStorage.setItem('openai_api_key', key);
+    }
+    const res = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice: voiceId })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-tts',
+        voice: voiceId,
+        input: text
+      })
     });
     if (!res.ok) throw new Error(res.statusText);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+    const buf = await res.arrayBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: 'audio/mpeg' }));
     const audio = new Audio(url);
     pendingUtterance = audio;
     audio.onended = () => {
